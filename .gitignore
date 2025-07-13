@@ -1,0 +1,19 @@
+# 가상환경
+venv/
+.env
+*.env
+
+# Python 캐시 파일
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# static/media 파일 (운영 환경에서는 보통 ignore)
+staticfiles/
+media/
+
+# OS 파일
+.DS_Store
+Thumbs.db
