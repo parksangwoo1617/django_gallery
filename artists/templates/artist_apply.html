@@ -1,0 +1,464 @@
+{% extends 'base.html' %} {% block title %}작가 등록 신청 - Django
+Gallery{%endblock %} {% block content %}
+<div class="container mt-4">
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+      <div class="card shadow">
+        <div class="card-header text-center bg-success text-white">
+          <h4><i class="fas fa-user-plus me-2"></i>작가 등록 신청</h4>
+        </div>
+        <div class="card-body p-4">
+          <form id="artist-application-form">
+            <!-- 이름 (16자 이하) -->
+            <div class="mb-3">
+              <label for="name" class="form-label">
+                이름 <span class="text-danger">*</span>
+              </label>
+              <input
+                type="text"
+                class="form-control"
+                id="name"
+                name="name"
+                placeholder="작가명을 입력하세요 (16자 이하)"
+                maxlength="16"
+                required
+              />
+              <div class="form-text">최대 16자까지 입력 가능합니다.</div>
+              <div class="invalid-feedback" id="name-error"></div>
+            </div>
+
+            <!-- 성별 -->
+            <div class="mb-3">
+              <label for="gender" class="form-label">
+                성별 <span class="text-danger">*</span>
+              </label>
+              <select class="form-select" id="gender" name="gender" required>
+                <option value="">성별을 선택하세요</option>
+                <option value="male">남자</option>
+                <option value="female">여자</option>
+              </select>
+              <div class="invalid-feedback" id="gender-error"></div>
+            </div>
+
+            <!-- 생년월일 -->
+            <div class="mb-3">
+              <label for="birth_date" class="form-label">
+                생년월일 <span class="text-danger">*</span>
+              </label>
+              <input
+                type="date"
+                class="form-control"
+                id="birth_date"
+                name="birth_date"
+                required
+              />
+              <div class="form-text">YYYY-MM-DD 형식으로 입력해주세요.</div>
+              <div class="invalid-feedback" id="birth_date-error"></div>
+            </div>
+
+            <!-- 이메일 -->
+            <div class="mb-3">
+              <label for="email" class="form-label">
+                이메일 <span class="text-danger">*</span>
+              </label>
+              <input
+                type="email"
+                class="form-control"
+                id="email"
+                name="email"
+                placeholder="example@domain.com"
+                required
+              />
+              <div class="form-text">아이디@도메인 형식으로 입력해주세요.</div>
+              <div class="invalid-feedback" id="email-error"></div>
+            </div>
+
+            <!-- 연락처 -->
+            <div class="mb-3">
+              <label for="phone" class="form-label">
+                연락처 <span class="text-danger">*</span>
+              </label>
+              <input
+                type="tel"
+                class="form-control"
+                id="phone"
+                name="phone"
+                placeholder="000-0000-0000"
+                maxlength="13"
+                required
+              />
+              <div class="form-text">000-0000-0000 형식으로 입력해주세요.</div>
+              <div class="invalid-feedback" id="phone-error"></div>
+            </div>
+
+            <!-- 제출 버튼 -->
+            <div class="d-grid gap-2">
+              <button
+                type="submit"
+                class="btn btn-success btn-lg"
+                id="submit-btn"
+              >
+                <i class="fas fa-paper-plane me-2"></i>작가 등록 신청
+              </button>
+            </div>
+          </form>
+
+          <div class="text-center mt-3">
+            <p class="text-muted">
+              <a href="/artists/" class="text-decoration-none">
+                <i class="fas fa-arrow-left me-1"></i>작가 목록으로 돌아가기
+              </a>
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} {% block extra_js %}
+<script>
+  // 인증 초기화 완료 이벤트 리스너
+  document.addEventListener("authInitialized", function (event) {
+    // 로그인 상태 체크
+    if (!event.detail.currentUser) {
+      handleNotLoggedInUser();
+      return;
+    }
+
+    // 이미 작가인 사용자 체크
+    if (
+      event.detail.currentUser.is_artist ||
+      event.detail.currentUser.role === "artist"
+    ) {
+      handleAlreadyArtistUser();
+      return;
+    }
+
+    // 폼 초기화
+    initializeArtistApplicationForm();
+  });
+
+  function initializeArtistApplicationForm() {
+    const form = document.getElementById("artist-application-form");
+    const submitBtn = document.getElementById("submit-btn");
+
+    // 연락처 자동 하이픈 추가
+    const phoneInput = document.getElementById("phone");
+    phoneInput.addEventListener("input", function (e) {
+      let value = e.target.value.replace(/\D/g, "");
+      if (value.length >= 11) {
+        value = value.slice(0, 11);
+        value = value.replace(/(\d{3})(\d{4})(\d{4})/, "$1-$2-$3");
+      } else if (value.length >= 7) {
+        value = value.replace(/(\d{3})(\d{4})(\d*)/, "$1-$2-$3");
+      } else if (value.length >= 3) {
+        value = value.replace(/(\d{3})(\d*)/, "$1-$2");
+      }
+      e.target.value = value;
+    });
+
+    // 폼 제출 이벤트
+    form.addEventListener("submit", async function (e) {
+      e.preventDefault();
+
+      if (!validateForm()) {
+        return;
+      }
+
+      await submitApplication();
+    });
+
+    // 실시간 검증
+    const inputs = form.querySelectorAll("input, select");
+    inputs.forEach((input) => {
+      input.addEventListener("blur", function () {
+        validateField(this);
+      });
+
+      input.addEventListener("input", function () {
+        clearFieldError(this);
+      });
+    });
+  }
+
+  // 필드별 검증
+  function validateField(field) {
+    const fieldId = field.id;
+    const value = field.value.trim();
+    let isValid = true;
+    let errorMessage = "";
+
+    switch (fieldId) {
+      case "name":
+        if (!value) {
+          errorMessage = "이름을 입력해주세요.";
+          isValid = false;
+        } else if (value.length > 16) {
+          errorMessage = "이름은 16자 이하로 입력해주세요.";
+          isValid = false;
+        }
+        break;
+
+      case "gender":
+        if (!value || !["male", "female"].includes(value)) {
+          errorMessage = "성별을 선택해주세요.";
+          isValid = false;
+        }
+        break;
+
+      case "birth_date":
+        if (!value) {
+          errorMessage = "생년월일을 입력해주세요.";
+          isValid = false;
+        } else if (!isValidDate(value)) {
+          errorMessage = "올바른 생년월일을 입력해주세요.";
+          isValid = false;
+        } else if (new Date(value) >= new Date()) {
+          errorMessage = "생년월일은 오늘 이전 날짜여야 합니다.";
+          isValid = false;
+        } else if (!isAdult(value)) {
+          errorMessage = "작가 등록은 만 18세 이상만 가능합니다.";
+          isValid = false;
+        }
+        break;
+
+      case "email":
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!value) {
+          errorMessage = "이메일을 입력해주세요.";
+          isValid = false;
+        } else if (!emailRegex.test(value)) {
+          errorMessage =
+            "올바른 이메일 형식을 입력해주세요. (예: example@domain.com)";
+          isValid = false;
+        }
+        break;
+
+      case "phone":
+        const phoneRegex = /^[0-9]{3}-[0-9]{4}-[0-9]{4}$/;
+        if (!value) {
+          errorMessage = "연락처를 입력해주세요.";
+          isValid = false;
+        } else if (!phoneRegex.test(value)) {
+          errorMessage = "연락처는 000-0000-0000 형식으로 입력해주세요.";
+          isValid = false;
+        }
+        break;
+    }
+
+    if (!isValid) {
+      showFieldError(field, errorMessage);
+    } else {
+      clearFieldError(field);
+    }
+
+    return isValid;
+  }
+
+  // 전체 폼 검증
+  function validateForm() {
+    const fields = ["name", "gender", "birth_date", "email", "phone"];
+    let allValid = true;
+
+    fields.forEach((fieldId) => {
+      const field = document.getElementById(fieldId);
+      if (!validateField(field)) {
+        allValid = false;
+      }
+    });
+
+    return allValid;
+  }
+
+  // 필드 에러 표시
+  function showFieldError(field, message) {
+    field.classList.add("is-invalid");
+    field.classList.remove("is-valid");
+    const errorDiv = document.getElementById(field.id + "-error");
+    if (errorDiv) {
+      errorDiv.textContent = message;
+    }
+  }
+
+  // 필드 에러 제거
+  function clearFieldError(field) {
+    field.classList.remove("is-invalid");
+    if (field.value.trim()) {
+      field.classList.add("is-valid");
+    } else {
+      field.classList.remove("is-valid");
+    }
+    const errorDiv = document.getElementById(field.id + "-error");
+    if (errorDiv) {
+      errorDiv.textContent = "";
+    }
+  }
+
+  // 날짜 유효성 검사
+  function isValidDate(dateString) {
+    const date = new Date(dateString);
+    return date instanceof Date && !isNaN(date);
+  }
+
+  // 만 18세 이상 검사
+  function isAdult(birthDate) {
+    const today = new Date();
+    const birth = new Date(birthDate);
+    const age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+
+    if (
+      monthDiff < 0 ||
+      (monthDiff === 0 && today.getDate() < birth.getDate())
+    ) {
+      return age - 1 >= 18;
+    }
+    return age >= 18;
+  }
+
+  // 작가 신청 제출
+  async function submitApplication() {
+    const submitBtn = document.getElementById("submit-btn");
+
+    // 버튼 로딩 상태
+    submitBtn.disabled = true;
+    submitBtn.innerHTML =
+      '<span class="spinner-border spinner-border-sm me-2"></span>신청 처리 중...';
+
+    try {
+      const formData = {
+        artist_name: document.getElementById("name").value.trim(),
+        gender: document.getElementById("gender").value,
+        birth_date: document.getElementById("birth_date").value,
+        email: document.getElementById("email").value.trim(),
+        phone: document.getElementById("phone").value.trim(),
+      };
+
+      const response = await api.request("artists/applications/", {
+        method: "POST",
+        body: JSON.stringify(formData),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        showMessage(
+          "작가 등록 신청이 완료되었습니다. 관리자 승인을 기다려 주세요.",
+          "success"
+        );
+
+        // 3초 후 작가 목록 페이지로 이동
+        setTimeout(() => {
+          window.location.href = "/artists/";
+        }, 3000);
+      } else {
+        const errorData = await response.json();
+        console.error("작가 신청 실패:", errorData);
+
+        if (errorData.error) {
+          showMessage(errorData.error, "error");
+        } else {
+          handleFormErrors(errorData);
+        }
+      }
+    } catch (error) {
+      console.error("작가 신청 중 오류:", error);
+      showMessage(
+        "작가 신청 중 오류가 발생했습니다. 다시 시도해주세요.",
+        "error"
+      );
+    } finally {
+      // 버튼 복원
+      submitBtn.disabled = false;
+      submitBtn.innerHTML =
+        '<i class="fas fa-paper-plane me-2"></i>작가 등록 신청';
+    }
+  }
+
+  // 로그인하지 않은 사용자 처리
+  function handleNotLoggedInUser() {
+    // 경고 메시지 추가
+    const alertDiv = document.createElement("div");
+    alertDiv.className = "alert alert-warning mt-3";
+    alertDiv.innerHTML = `
+      <i class="fas fa-exclamation-triangle me-2"></i>
+      <strong>로그인이 필요합니다!</strong><br>
+      작가 등록을 신청하려면 먼저 로그인해주세요. 
+      <div class="mt-2">
+        <a href="/accounts/login/" class="btn btn-primary btn-sm me-2">
+          <i class="fas fa-sign-in-alt me-1"></i>로그인
+        </a>
+        <a href="/accounts/signup/" class="btn btn-outline-primary btn-sm">
+          <i class="fas fa-user-plus me-1"></i>회원가입
+        </a>
+      </div>
+    `;
+
+    const form = document.getElementById("artist-application-form");
+    form.parentNode.insertBefore(alertDiv, form);
+
+    // 폼 비활성화
+    const inputs = form.querySelectorAll("input, select, button");
+    inputs.forEach((input) => {
+      input.disabled = true;
+    });
+
+    const submitBtn = document.getElementById("submit-btn");
+    if (submitBtn) {
+      submitBtn.innerHTML =
+        '<i class="fas fa-lock me-2"></i>로그인 후 신청 가능';
+    }
+  }
+
+  // 이미 작가인 사용자 처리
+  function handleAlreadyArtistUser() {
+    showMessage("이미 작가로 등록된 사용자입니다.", "info");
+
+    // 안내 메시지 추가
+    const alertDiv = document.createElement("div");
+    alertDiv.className = "alert alert-info mt-3";
+    alertDiv.innerHTML = `
+      <i class="fas fa-info-circle me-2"></i>
+      <strong>작가 계정입니다!</strong><br>
+      이미 작가로 등록된 계정이므로 추가 신청이 필요하지 않습니다.
+      <div class="mt-2">
+        <a href="/artists/" class="btn btn-info btn-sm me-2">
+          <i class="fas fa-users me-1"></i>작가 목록 보기
+        </a>
+        <a href="/artists/dashboard/" class="btn btn-outline-info btn-sm">
+          <i class="fas fa-tachometer-alt me-1"></i>내 대시보드
+        </a>
+      </div>
+    `;
+
+    const form = document.getElementById("artist-application-form");
+    form.parentNode.insertBefore(alertDiv, form);
+
+    // 폼 숨기기
+    form.style.display = "none";
+  }
+
+  // 서버 에러 처리
+  function handleFormErrors(errors) {
+    Object.keys(errors).forEach((field) => {
+      let fieldElement;
+      if (field === "artist_name") {
+        fieldElement = document.getElementById("name");
+      } else {
+        fieldElement = document.getElementById(field);
+      }
+
+      if (fieldElement) {
+        const errorMessage = Array.isArray(errors[field])
+          ? errors[field][0]
+          : errors[field];
+        showFieldError(fieldElement, errorMessage);
+      }
+    });
+
+    // 일반 에러 메시지
+    if (errors.non_field_errors) {
+      showMessage(errors.non_field_errors[0], "error");
+    }
+  }
+</script>
+{% endblock %}

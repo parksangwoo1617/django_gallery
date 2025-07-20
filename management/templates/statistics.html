@@ -1,0 +1,280 @@
+{% extends 'base.html' %} {% block title %}작가 통계 - Django
+Gallery{%endblock%} {% block content %}
+<div class="container-fluid mt-4">
+  <!-- 관리자 권한 체크 -->
+  <div id="access-denied" class="d-none">
+    <div class="alert alert-danger text-center" role="alert">
+      <i class="fas fa-exclamation-triangle fa-3x mb-3"></i>
+      <h4>접근 권한이 없습니다</h4>
+      <p>관리자만 접근할 수 있는 페이지입니다.</p>
+      <a href="/" class="btn btn-primary">홈으로 돌아가기</a>
+    </div>
+  </div>
+
+  <!-- 메인 내용 -->
+  <div id="main-content" class="d-none">
+    <div class="row">
+      <!-- 사이드바 -->
+      <div class="col-md-2">
+        <div class="card">
+          <div class="card-header bg-dark text-white">
+            <h6 class="mb-0"><i class="fas fa-cog me-2"></i>관리자 메뉴</h6>
+          </div>
+          <div class="card-body p-0">
+            <nav class="nav flex-column">
+              <a class="nav-link" href="/management/">
+                <i class="fas fa-tachometer-alt me-2"></i>대시보드
+              </a>
+              <a class="nav-link" href="/management/applications/">
+                <i class="fas fa-user-plus me-2"></i>작가 신청 관리
+              </a>
+              <a class="nav-link active" href="/management/statistics/">
+                <i class="fas fa-chart-bar me-2"></i>작가 통계
+              </a>
+
+              <div class="dropdown-divider"></div>
+              <a
+                class="nav-link text-danger"
+                href="{% url 'management:admin_logout' %}"
+              >
+                <i class="fas fa-sign-out-alt me-2"></i>로그아웃
+              </a>
+            </nav>
+          </div>
+        </div>
+      </div>
+
+      <!-- 메인 콘텐츠 -->
+      <div class="col-md-10">
+        <!-- 헤더 -->
+        <div class="row mb-4">
+          <div class="col-12">
+            <h1><i class="fas fa-chart-bar text-success me-2"></i>작가 통계</h1>
+          </div>
+        </div>
+
+        <!-- 작가별 상세 통계 -->
+        <div class="row">
+          <div class="col-12">
+            <div class="card">
+              <div
+                class="card-header d-flex justify-content-between align-items-center"
+              >
+                <h5 class="mb-0">
+                  <i class="fas fa-table text-info me-2"></i>작가별 상세 통계
+                </h5>
+                <button
+                  class="btn btn-success btn-sm"
+                  onclick="exportStatisticsCSV()"
+                >
+                  <i class="fas fa-download me-1"></i>CSV 다운로드
+                </button>
+              </div>
+              <div class="card-body">
+                <div class="table-responsive">
+                  <table class="table table-striped table-hover">
+                    <thead class="table-dark">
+                      <tr>
+                        <th>작가명</th>
+                        <th>100호 이하 작품 수</th>
+                        <th>평균 가격</th>
+                      </tr>
+                    </thead>
+                    <tbody id="artist-stats-table">
+                      <!-- 동적으로 로드 -->
+                    </tbody>
+                  </table>
+                </div>
+
+                <!-- 페이지네이션 -->
+                <div
+                  class="d-flex justify-content-between align-items-center mt-3"
+                >
+                  <div>
+                    <small class="text-muted">
+                      총 <span id="stats-total">0</span>명의 작가
+                    </small>
+                  </div>
+                  <nav>
+                    <ul
+                      class="pagination pagination-sm mb-0"
+                      id="stats-pagination"
+                    >
+                      <!-- 동적으로 생성 -->
+                    </ul>
+                  </nav>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 로딩 -->
+  <div id="loading" class="loading text-center">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">로딩 중...</span>
+    </div>
+    <p class="mt-2">통계 정보를 불러오는 중...</p>
+  </div>
+</div>
+
+<style>
+  .nav-link {
+    color: #6c757d;
+    border-radius: 0;
+  }
+
+  .nav-link:hover {
+    background-color: #f8f9fa;
+    color: #495057;
+  }
+
+  .nav-link.active {
+    background-color: #007bff;
+    color: white;
+  }
+
+  .loading {
+    padding: 3rem 0;
+  }
+
+  .progress-container {
+    margin-bottom: 1rem;
+  }
+
+  .progress-label {
+    display: flex;
+    justify-content: between;
+    margin-bottom: 0.25rem;
+  }
+</style>
+
+{% endblock %} {% block extra_js %}
+<script>
+  let currentStatsPage = 1;
+  let statsPageSize = 20;
+
+  document.addEventListener("DOMContentLoaded", function () {
+    // 관리자 세션 정보
+    const isAdminLoggedIn = {{ request.session.is_admin_logged_in|yesno:"true,false" }};
+
+    // 관리자 권한 체크
+    if (!isAdminLoggedIn) {
+      document.getElementById("access-denied").classList.remove("d-none");
+      document.getElementById("loading").classList.add("d-none");
+      return;
+    }
+
+    loadStatistics();
+  });
+
+  async function loadStatistics() {
+    const loading = document.getElementById("loading");
+    const content = document.getElementById("main-content");
+
+    loading.classList.remove("d-none");
+    content.classList.add("d-none");
+
+    try {
+      const response = await api.request("/management/api/dashboard/stats/");
+      if (response.ok) {
+        const data = await response.json();
+
+        displayArtistStats(data.artist_stats || []);
+
+        content.classList.remove("d-none");
+      } else {
+        throw new Error("통계 데이터 로딩 실패");
+      }
+    } catch (error) {
+      console.error("Statistics load error:", error);
+      showMessage("통계 정보 로딩 중 오류가 발생했습니다.", "error");
+    } finally {
+      loading.classList.add("d-none");
+    }
+  }
+
+  function displayArtistStats(artistStats) {
+    const tbody = document.getElementById("artist-stats-table");
+
+    if (!artistStats || artistStats.length === 0) {
+      tbody.innerHTML =
+        '<tr><td colspan="3" class="text-center text-muted py-4">통계 데이터가 없습니다.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = artistStats
+      .slice(0, statsPageSize)
+      .map((artist) => {
+        const avgPrice = artist.avg_price || 0;
+
+        return `
+          <tr>
+            <td><strong>${artist.artist_name}</strong></td>
+            <td><span class="badge bg-warning text-dark">${
+              artist.artwork_count_under_100 || 0
+            }</span></td>
+            <td><strong>${
+              avgPrice > 0 ? avgPrice.toLocaleString() + "원" : "0원"
+            }</strong></td>
+          </tr>
+        `;
+      })
+      .join("");
+
+    // 총 작가 수 업데이트
+    document.getElementById("stats-total").textContent = artistStats.length;
+  }
+
+  async function exportStatisticsCSV() {
+    try {
+      showMessage("CSV 파일을 생성하는 중...", "info");
+
+      // 통계 데이터를 CSV로 변환
+      const response = await api.request("/management/api/dashboard/stats/");
+      if (response.ok) {
+        const data = await response.json();
+        const artistStats = data.artist_stats || [];
+
+        // CSV 헤더
+        let csvContent = "작가명,100호이하작품수,평균가격\n";
+
+        // CSV 데이터
+        artistStats.forEach((artist) => {
+          const row = [
+            artist.artist_name,
+            artist.artwork_count_under_100 || 0,
+            artist.avg_price || 0,
+          ];
+          csvContent += row.join(",") + "\n";
+        });
+
+        // 파일 다운로드
+        const blob = new Blob(["\ufeff" + csvContent], {
+          type: "text/csv;charset=utf-8;",
+        });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `artist_statistics_${
+          new Date().toISOString().split("T")[0]
+        }.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+
+        showMessage("CSV 파일이 다운로드되었습니다.", "success");
+      } else {
+        throw new Error("통계 데이터 로딩 실패");
+      }
+    } catch (error) {
+      console.error("CSV export error:", error);
+      showMessage("CSV 다운로드 중 오류가 발생했습니다.", "error");
+    }
+  }
+</script>
+{% endblock %}

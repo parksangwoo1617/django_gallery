@@ -1,0 +1,309 @@
+{% extends 'base.html' %} {% block title %}작품 목록 - Django
+Gallery{%endblock%} {% block content %}
+<div class="container mt-4">
+  <!-- 헤더 -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <h1 class="text-center mb-4">
+        <i class="fas fa-palette text-primary me-2"></i>작품 갤러리
+      </h1>
+    </div>
+  </div>
+
+  <!-- 검색 및 필터 -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label for="search" class="form-label">검색</label>
+              <input
+                type="text"
+                class="form-control"
+                id="search"
+                placeholder="작품명, 작가명으로 검색..."
+              />
+            </div>
+            <div class="col-md-3">
+              <label for="minPrice" class="form-label">최소 가격</label>
+              <input
+                type="number"
+                class="form-control"
+                id="minPrice"
+                placeholder="최소 가격"
+              />
+            </div>
+            <div class="col-md-3">
+              <label for="maxPrice" class="form-label">최대 가격</label>
+              <input
+                type="number"
+                class="form-control"
+                id="maxPrice"
+                placeholder="최대 가격"
+              />
+            </div>
+            <div class="col-md-2">
+              <label for="year" class="form-label">제작년도</label>
+              <input
+                type="number"
+                class="form-control"
+                id="year"
+                placeholder="년도"
+              />
+            </div>
+          </div>
+          <div class="row mt-3">
+            <div class="col-md-3 d-flex align-items-end">
+              <button class="btn btn-primary me-2" onclick="applyFilters()">
+                <i class="fas fa-search me-1"></i>검색
+              </button>
+              <button
+                class="btn btn-outline-secondary"
+                onclick="resetFilters()"
+              >
+                <i class="fas fa-undo me-1"></i>초기화
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 로딩 -->
+  <div id="loading" class="loading">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">로딩 중...</span>
+    </div>
+    <p class="mt-2">작품을 불러오는 중...</p>
+  </div>
+
+  <!-- 작품 목록 -->
+  <div id="artworks-container" class="row"></div>
+
+  <!-- 페이지네이션 -->
+  <nav aria-label="작품 목록 페이지네이션" class="mt-4">
+    <ul id="pagination" class="pagination justify-content-center"></ul>
+  </nav>
+</div>
+{% endblock %} {% block extra_js %}
+<script>
+  let currentPage = 1;
+  let currentFilters = {};
+
+  document.addEventListener("DOMContentLoaded", function () {
+    loadArtworks();
+
+    document.addEventListener("keypress", function (e) {
+      if (
+        e.key === "Enter" &&
+        e.target.matches("#search, #minPrice, #maxPrice, #year")
+      ) {
+        applyFilters();
+      }
+    });
+  });
+
+  async function loadArtworks(page = 1) {
+    const loading = document.getElementById("loading");
+    const container = document.getElementById("artworks-container");
+
+    loading.style.display = "block";
+    container.innerHTML = "";
+
+    try {
+      const params = {
+        page: page,
+        ...currentFilters,
+      };
+
+      const response = await api.getArtworks(params);
+
+      if (response.ok) {
+        const data = await response.json();
+        displayArtworks(data.results);
+        displayPagination(data);
+      } else {
+        showError("작품 목록을 불러올 수 없습니다.");
+      }
+    } catch (error) {
+      console.error("Failed to load artworks:", error);
+      showError("네트워크 오류가 발생했습니다.");
+    } finally {
+      loading.style.display = "none";
+    }
+  }
+
+  function displayArtworks(artworks) {
+    const container = document.getElementById("artworks-container");
+
+    if (artworks.length === 0) {
+      container.innerHTML = `
+            <div class="col-12 text-center py-5">
+                <i class="fas fa-palette fa-4x text-muted mb-3"></i>
+                <h4 class="text-muted">검색 결과가 없습니다</h4>
+                <p class="text-muted">다른 검색 조건을 시도해보세요.</p>
+            </div>
+        `;
+      return;
+    }
+
+    container.innerHTML = artworks
+      .map(
+        (artwork) => `
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="position-relative">
+                    <img 
+                        src="${artwork.image_url || ""}" 
+                        class="card-img-top artwork-img" 
+                        alt="${artwork.title}"
+                        style="height: 300px; object-fit: cover;"
+                        onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'"
+                    >
+                    <div class="card-img-top d-none justify-content-center align-items-center bg-light" 
+                         style="height: 300px; border-bottom: 1px solid #dee2e6;">
+                        <div class="text-center text-muted">
+                            <i class="fas fa-image fa-3x mb-2" style="opacity: 0.3;"></i>
+                            <div>이미지 없음</div>
+                        </div>
+                    </div>
+                    ${
+                      artwork.has_image
+                        ? ""
+                        : '<div class="position-absolute top-0 end-0 m-2"><span class="badge bg-secondary">이미지 없음</span></div>'
+                    }
+                </div>
+                <div class="card-body">
+                    <h5 class="card-title">${artwork.title}</h5>
+                    <p class="card-text text-muted mb-2">
+                        <i class="fas fa-user me-1"></i>${artwork.artist_name}
+                    </p>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <small class="text-muted">
+                            <i class="fas fa-calendar me-1"></i>${
+                              artwork.creation_year
+                            }년
+                        </small>
+                        <small class="text-muted">
+                            <i class="fas fa-ruler me-1"></i>${
+                              artwork.size_display
+                            }
+                        </small>
+                    </div>
+                    ${
+                      artwork.price
+                        ? `<div class="text-end">
+                            <span class="h5 text-primary fw-bold">${formatPrice(
+                              artwork.price
+                            )}원</span>
+                        </div>`
+                        : '<div class="text-end"><span class="text-muted">가격 문의</span></div>'
+                    }
+                </div>
+            </div>
+        </div>
+    `
+      )
+      .join("");
+  }
+
+  function displayPagination(data) {
+    const pagination = document.getElementById("pagination");
+
+    if (!data.next && !data.previous) {
+      pagination.innerHTML = "";
+      return;
+    }
+
+    const totalPages = Math.ceil(data.count / 20);
+    const current = currentPage;
+
+    let paginationHtml = "";
+
+    if (data.previous) {
+      paginationHtml += `
+            <li class="page-item">
+                <a class="page-link" href="#" onclick="changePage(${
+                  current - 1
+                })">이전</a>
+            </li>
+        `;
+    }
+
+    const startPage = Math.max(1, current - 2);
+    const endPage = Math.min(totalPages, current + 2);
+
+    for (let i = startPage; i <= endPage; i++) {
+      paginationHtml += `
+            <li class="page-item ${i === current ? "active" : ""}">
+                <a class="page-link" href="#" onclick="changePage(${i})">${i}</a>
+            </li>
+        `;
+    }
+
+    if (data.next) {
+      paginationHtml += `
+            <li class="page-item">
+                <a class="page-link" href="#" onclick="changePage(${
+                  current + 1
+                })">다음</a>
+            </li>
+        `;
+    }
+
+    pagination.innerHTML = paginationHtml;
+  }
+
+  function applyFilters() {
+    const search = document.getElementById("search").value;
+    const minPrice = document.getElementById("minPrice").value;
+    const maxPrice = document.getElementById("maxPrice").value;
+    const year = document.getElementById("year").value;
+
+    currentFilters = {};
+
+    if (search) currentFilters.search = search;
+    if (minPrice) currentFilters.min_price = minPrice;
+    if (maxPrice) currentFilters.max_price = maxPrice;
+    if (year) currentFilters.year = year;
+
+    currentPage = 1;
+    loadArtworks(1);
+  }
+
+  function resetFilters() {
+    document.getElementById("search").value = "";
+    document.getElementById("minPrice").value = "";
+    document.getElementById("maxPrice").value = "";
+    document.getElementById("year").value = "";
+
+    currentFilters = {};
+    currentPage = 1;
+    loadArtworks(1);
+  }
+
+  function changePage(page) {
+    currentPage = page;
+    loadArtworks(page);
+    window.scrollTo(0, 0);
+  }
+
+  function showError(message) {
+    const container = document.getElementById("artworks-container");
+    container.innerHTML = `
+        <div class="col-12 text-center py-5">
+            <i class="fas fa-exclamation-triangle fa-4x text-danger mb-3"></i>
+            <h4 class="text-danger">오류 발생</h4>
+            <p class="text-muted">${message}</p>
+            <button class="btn btn-primary" onclick="loadArtworks()">다시 시도</button>
+        </div>
+    `;
+  }
+
+  function formatPrice(price) {
+    return new Intl.NumberFormat("ko-KR").format(price);
+  }
+</script>
+{% endblock %}

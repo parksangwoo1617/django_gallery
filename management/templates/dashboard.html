@@ -1,0 +1,185 @@
+{% extends 'base.html' %} {% block title %}관리자 대시보드 - Django
+Gallery{%endblock %} {% block extra_css %}
+<style>
+  .sidebar {
+    height: 100vh;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+  }
+
+  .nav-link {
+    color: rgba(255, 255, 255, 0.8);
+    border-radius: 5px;
+    margin: 2px 0;
+    transition: all 0.3s ease;
+  }
+
+  .nav-link:hover,
+  .nav-link.active {
+    background-color: rgba(255, 255, 255, 0.2);
+    color: white;
+  }
+
+  .main-button {
+    transition: all 0.3s ease;
+    cursor: pointer;
+    border: none !important;
+  }
+
+  .main-button:hover {
+    transform: translateY(-10px) scale(1.05);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15) !important;
+  }
+
+  .main-button .card-body {
+    padding: 3rem !important;
+  }
+
+  .main-button i {
+    transition: all 0.3s ease;
+  }
+
+  .main-button:hover i {
+    transform: scale(1.1);
+  }
+</style>
+{% endblock %} {% block content %}
+<div class="container-fluid">
+  <div class="row">
+    <!-- 메인 콘텐츠 -->
+    <div class="col-12">
+      <!-- 헤더 -->
+      <div class="row mb-4">
+        <div class="col-12">
+          <div class="d-flex justify-content-between align-items-center">
+            <h1>
+              <i class="fas fa-tachometer-alt text-primary me-2"></i>관리자
+              대시보드
+            </h1>
+            <div class="d-flex align-items-center">
+              <span class="badge bg-success fs-6 me-2">
+                <i class="fas fa-user me-1"></i
+                ><span id="admin-username">관리자</span>
+              </span>
+              <a
+                href="{% url 'management:admin_logout' %}"
+                class="btn btn-outline-danger btn-sm"
+              >
+                <i class="fas fa-sign-out-alt me-1"></i>로그아웃
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 메인 기능 버튼 -->
+      <div class="row justify-content-center">
+        <div class="col-md-5 mb-4">
+          <a href="/management/applications/" class="text-decoration-none">
+            <div
+              class="card main-button bg-primary text-white h-100 shadow-lg"
+              style="min-height: 350px"
+            >
+              <div
+                class="card-body d-flex flex-column justify-content-center align-items-center text-center"
+              >
+                <i class="fas fa-user-plus display-1 mb-4"></i>
+                <h2 class="card-title mb-3">작가 신청 관리</h2>
+                <p class="card-text fs-5 mb-4">
+                  작가 등록 신청을 검토하고<br />
+                  승인/거절 처리를 할 수 있습니다
+                </p>
+                <div class="mt-auto">
+                  <i class="fas fa-arrow-right fa-2x"></i>
+                </div>
+              </div>
+            </div>
+          </a>
+        </div>
+
+        <div class="col-md-5 mb-4">
+          <a href="/management/statistics/" class="text-decoration-none">
+            <div
+              class="card main-button bg-success text-white h-100 shadow-lg"
+              style="min-height: 350px"
+            >
+              <div
+                class="card-body d-flex flex-column justify-content-center align-items-center text-center"
+              >
+                <i class="fas fa-chart-bar display-1 mb-4"></i>
+                <h2 class="card-title mb-3">작가 통계</h2>
+                <p class="card-text fs-5 mb-4">
+                  등록된 작가들의 통계와<br />
+                  다양한 분석 데이터를 확인합니다
+                </p>
+                <div class="mt-auto">
+                  <i class="fas fa-arrow-right fa-2x"></i>
+                </div>
+              </div>
+            </div>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 접근 거부 모달 -->
+<div class="modal fade" id="accessDeniedModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title">
+          <i class="fas fa-exclamation-triangle me-2"></i>접근 거부
+        </h5>
+      </div>
+      <div class="modal-body">
+        <p>관리자 권한이 필요합니다. 로그인 후 다시 시도해주세요.</p>
+      </div>
+      <div class="modal-footer">
+        <a href="/management/login/" class="btn btn-primary">로그인하기</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 로딩 화면 -->
+<div id="loading" class="d-none">
+  <div class="loading text-center">
+    <div class="spinner-border text-primary mb-3" role="status"></div>
+    <p>관리자 정보를 확인하는 중...</p>
+  </div>
+</div>
+
+<!-- 접근 거부 화면 -->
+<div id="access-denied" class="d-none">
+  <div class="text-center py-5">
+    <i class="fas fa-exclamation-triangle text-danger fa-4x mb-4"></i>
+    <h3>접근 권한이 없습니다</h3>
+    <p class="text-muted mb-4">
+      이 페이지에 접근하려면 관리자 권한이 필요합니다.
+    </p>
+    <a href="/management/login/" class="btn btn-primary">
+      <i class="fas fa-sign-in-alt me-2"></i>관리자 로그인
+    </a>
+  </div>
+</div>
+{% endblock %} {% block extra_js %}
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    // 관리자 세션 정보
+    const adminUsername = "{{ request.session.admin_username|default:'' }}";
+    const isAdminLoggedIn = {{ request.session.is_admin_logged_in|yesno:"true,false" }};
+
+    // 관리자 권한 체크
+    if (!isAdminLoggedIn || !adminUsername) {
+      document.getElementById("access-denied").classList.remove("d-none");
+      document.getElementById("loading").classList.add("d-none");
+      return;
+    }
+
+    // 관리자 이름 표시
+    document.getElementById("admin-username").textContent = adminUsername;
+  });
+</script>
+{% endblock %}

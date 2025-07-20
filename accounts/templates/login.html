@@ -1,0 +1,202 @@
+{% extends 'base.html' %} {% block title %}로그인 - Django Gallery{% endblock %}
+{% block content %}
+<div class="container mt-5">
+  <div class="row justify-content-center">
+    <div class="col-md-6">
+      <div class="card shadow">
+        <div class="card-header text-center bg-primary text-white">
+          <h4><i class="fas fa-sign-in-alt me-2"></i>로그인</h4>
+        </div>
+        <div class="card-body p-4">
+          <form id="login-form">
+            <div class="mb-3">
+              <label for="username" class="form-label">아이디</label>
+              <input
+                type="text"
+                class="form-control"
+                id="username"
+                name="username"
+                placeholder="아이디를 입력하세요"
+                required
+              />
+            </div>
+
+            <div class="mb-3">
+              <label for="password" class="form-label">비밀번호</label>
+              <input
+                type="password"
+                class="form-control"
+                id="password"
+                name="password"
+                placeholder="비밀번호를 입력하세요"
+                required
+              />
+            </div>
+
+            <div class="d-grid mb-3">
+              <button type="submit" class="btn btn-primary" id="login-btn">
+                <i class="fas fa-sign-in-alt me-2"></i>로그인
+              </button>
+            </div>
+          </form>
+
+          <div class="text-center">
+            <p class="mb-0">
+              계정이 없으신가요?
+              <a href="/accounts/signup/" class="text-decoration-none"
+                >회원가입</a
+              >
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} {% block extra_js %}
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    // 이미 로그인된 사용자는 홈으로 리다이렉트
+    if (currentUser) {
+      window.location.href = "/";
+      return;
+    }
+
+    const loginForm = document.getElementById("login-form");
+    const loginBtn = document.getElementById("login-btn");
+
+    loginForm.addEventListener("submit", async function (e) {
+      e.preventDefault();
+      await handleLogin();
+    });
+  });
+
+  async function handleLogin() {
+    const loginBtn = document.getElementById("login-btn");
+    const usernameElement = document.getElementById("username");
+    const passwordElement = document.getElementById("password");
+
+    if (!usernameElement || !passwordElement) {
+      console.error("DOM 요소를 찾을 수 없습니다!");
+      return;
+    }
+
+    const username = usernameElement.value;
+    const password = passwordElement.value;
+
+    // 로딩 상태
+    loginBtn.disabled = true;
+    loginBtn.innerHTML =
+      '<i class="fas fa-spinner fa-spin me-2"></i>로그인 중...';
+
+    try {
+      const response = await api.login(username, password);
+
+      if (response.ok) {
+        const data = await response.json();
+
+        // 사용자 정보 저장 (세션 기반 인증)
+        currentUser = data.user;
+        localStorage.setItem("current_user", JSON.stringify(currentUser));
+
+        showMessage(data.message, "success");
+
+        // 네비게이션 업데이트
+        updateAuthUI();
+
+        // 홈페이지로 리다이렉트
+        setTimeout(() => {
+          window.location.href = "/";
+        }, 1000);
+      } else {
+        const errorData = await response.json();
+        console.error("로그인 실패:", {
+          status: response.status,
+          statusText: response.statusText,
+          errorData: errorData,
+        });
+
+        // 에러 메시지 번역 함수
+        function translateError(message, fieldName = "") {
+          const translations = {
+            "This field is required.": "필수 입력 항목입니다.",
+            "This field may not be blank.": "필수 입력해주세요.",
+            "Invalid credentials.": "아이디 또는 비밀번호가 올바르지 않습니다.",
+            "Unable to log in with provided credentials.":
+              "아이디 또는 비밀번호가 올바르지 않습니다.",
+            "This account is inactive.": "비활성화된 계정입니다.",
+            Username: "아이디",
+            Password: "비밀번호",
+            Required: "필수",
+            Invalid: "올바르지 않음",
+          };
+
+          // 필드별 맞춤 메시지
+          const fieldSpecificMessages = {
+            username: {
+              "This field is required.": "아이디를 입력해주세요.",
+              "This field may not be blank.": "아이디를 입력해주세요.",
+            },
+            password: {
+              "This field is required.": "비밀번호를 입력해주세요.",
+              "This field may not be blank.": "비밀번호를 입력해주세요.",
+            },
+          };
+
+          // 필드별 맞춤 메시지가 있으면 우선 사용
+          if (
+            fieldName &&
+            fieldSpecificMessages[fieldName] &&
+            fieldSpecificMessages[fieldName][message]
+          ) {
+            return fieldSpecificMessages[fieldName][message];
+          }
+
+          return translations[message] || message;
+        }
+
+        if (response.status === 400) {
+          // 폼 유효성 검사 오류
+          if (errorData.non_field_errors) {
+            const translatedError = translateError(
+              errorData.non_field_errors[0]
+            );
+            showMessage(translatedError, "error");
+          } else if (errorData.username || errorData.password) {
+            // 필드별 에러 메시지 처리
+            let errorMessage = "입력 정보를 확인해주세요.";
+            if (errorData.username) {
+              errorMessage = translateError(
+                Array.isArray(errorData.username)
+                  ? errorData.username[0]
+                  : errorData.username,
+                "username"
+              );
+            } else if (errorData.password) {
+              errorMessage = translateError(
+                Array.isArray(errorData.password)
+                  ? errorData.password[0]
+                  : errorData.password,
+                "password"
+              );
+            }
+            showMessage(errorMessage, "error");
+          } else {
+            showMessage("입력 정보를 확인해주세요.", "error");
+          }
+        } else {
+          showMessage("로그인 중 오류가 발생했습니다.", "error");
+        }
+      }
+    } catch (error) {
+      console.error("로그인 요청 중 예외 발생:", error);
+      console.error("에러 스택:", error.stack);
+      showMessage("네트워크 오류가 발생했습니다.", "error");
+    } finally {
+      // 버튼 상태 복원
+      loginBtn.disabled = false;
+      loginBtn.innerHTML = '<i class="fas fa-sign-in-alt me-2"></i>로그인';
+    }
+  }
+</script>
+{% endblock %}

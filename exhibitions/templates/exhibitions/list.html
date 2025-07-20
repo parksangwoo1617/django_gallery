@@ -1,0 +1,239 @@
+{% extends 'base.html' %} {% block title %}전시회 목록 - Django
+Gallery{%endblock%} {% block content %}
+<div class="container mt-4">
+  <!-- 헤더 -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <h1 class="text-center mb-4">
+        <i class="fas fa-calendar-alt text-warning me-2"></i>전시회 소개
+      </h1>
+    </div>
+  </div>
+
+  <!-- 검색 -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label for="search" class="form-label">검색</label>
+              <input
+                type="text"
+                class="form-control"
+                id="search"
+                placeholder="전시회명으로 검색..."
+              />
+            </div>
+
+            <div class="col-md-3 d-flex align-items-end">
+              <button class="btn btn-warning me-2" onclick="applyFilters()">
+                <i class="fas fa-search me-1"></i>검색
+              </button>
+              <button
+                class="btn btn-outline-secondary"
+                onclick="resetFilters()"
+              >
+                <i class="fas fa-undo me-1"></i>초기화
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 로딩 -->
+  <div id="loading" class="loading">
+    <div class="spinner-border text-warning" role="status">
+      <span class="visually-hidden">로딩 중...</span>
+    </div>
+    <p class="mt-2">전시회 목록을 불러오는 중...</p>
+  </div>
+
+  <!-- 전시회 목록 -->
+  <div class="row" id="exhibitions-container"></div>
+
+  <!-- 페이지네이션 -->
+  <nav aria-label="전시회 페이지네이션">
+    <ul class="pagination justify-content-center" id="pagination"></ul>
+  </nav>
+</div>
+{% endblock %} {% block extra_js %}
+<script>
+  let currentFilters = {};
+  let currentPage = 1;
+
+  document.addEventListener("DOMContentLoaded", function () {
+    loadExhibitions();
+
+    document.addEventListener("keypress", function (e) {
+      if (e.key === "Enter" && e.target.matches("#search")) {
+        applyFilters();
+      }
+    });
+  });
+
+  async function loadExhibitions(page = 1) {
+    const loading = document.getElementById("loading");
+    const container = document.getElementById("exhibitions-container");
+
+    loading.style.display = "block";
+    container.innerHTML = "";
+
+    try {
+      const params = {
+        page: page,
+        ...currentFilters,
+      };
+
+      const response = await api.getExhibitions(params);
+
+      if (response.ok) {
+        const data = await response.json();
+        displayExhibitions(data.results);
+        displayPagination(data);
+      } else {
+        showError("전시회 목록을 불러올 수 없습니다.");
+      }
+    } catch (error) {
+      console.error("Failed to load exhibitions:", error);
+      showError("네트워크 오류가 발생했습니다.");
+    } finally {
+      loading.style.display = "none";
+    }
+  }
+
+  function displayExhibitions(exhibitions) {
+    const container = document.getElementById("exhibitions-container");
+
+    if (exhibitions.length === 0) {
+      container.innerHTML = `
+            <div class="col-12 text-center py-5">
+                <i class="fas fa-calendar-alt fa-4x text-muted mb-3"></i>
+                <h4 class="text-muted">검색 결과가 없습니다</h4>
+                <p class="text-muted">다른 검색 조건을 시도해보세요.</p>
+            </div>
+        `;
+      return;
+    }
+
+    container.innerHTML = exhibitions
+      .map(
+        (exhibition) => `
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">${exhibition.title}</h5>
+                    <div class="mb-3">
+                        <small class="text-muted">
+                            <i class="fas fa-calendar me-1"></i>
+                            ${formatDate(exhibition.start_date)} ~ ${formatDate(
+          exhibition.end_date
+        )}
+                        </small>
+                    </div>
+                    <div class="text-muted small">
+                        <span><i class="fas fa-palette me-1"></i>작가: ${
+                          exhibition.artist_name || "-"
+                        }</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `
+      )
+      .join("");
+  }
+
+  function displayPagination(data) {
+    const pagination = document.getElementById("pagination");
+
+    if (data.count <= 10) {
+      pagination.innerHTML = "";
+      return;
+    }
+
+    const totalPages = Math.ceil(data.count / 10);
+    const current = currentPage;
+
+    let paginationHtml = "";
+
+    if (current > 1) {
+      paginationHtml += `
+            <li class="page-item">
+                <a class="page-link" href="#" onclick="changePage(${
+                  current - 1
+                })">이전</a>
+            </li>
+        `;
+    }
+
+    const startPage = Math.max(1, current - 2);
+    const endPage = Math.min(totalPages, current + 2);
+
+    for (let i = startPage; i <= endPage; i++) {
+      paginationHtml += `
+            <li class="page-item ${i === current ? "active" : ""}">
+                <a class="page-link" href="#" onclick="changePage(${i})">${i}</a>
+            </li>
+        `;
+    }
+
+    if (current < totalPages) {
+      paginationHtml += `
+            <li class="page-item">
+                <a class="page-link" href="#" onclick="changePage(${
+                  current + 1
+                })">다음</a>
+            </li>
+        `;
+    }
+
+    pagination.innerHTML = paginationHtml;
+  }
+
+  function applyFilters() {
+    const search = document.getElementById("search").value;
+
+    currentFilters = {};
+
+    if (search) currentFilters.search = search;
+
+    currentPage = 1;
+    loadExhibitions(1);
+  }
+
+  function resetFilters() {
+    document.getElementById("search").value = "";
+
+    currentFilters = {};
+    currentPage = 1;
+    loadExhibitions(1);
+  }
+
+  function changePage(page) {
+    currentPage = page;
+    loadExhibitions(page);
+    window.scrollTo(0, 0);
+  }
+
+  function showError(message) {
+    const container = document.getElementById("exhibitions-container");
+    container.innerHTML = `
+        <div class="col-12 text-center py-5">
+            <i class="fas fa-exclamation-triangle fa-4x text-danger mb-3"></i>
+            <h4 class="text-danger">오류 발생</h4>
+            <p class="text-muted">${message}</p>
+            <button class="btn btn-warning" onclick="loadExhibitions()">다시 시도</button>
+        </div>
+    `;
+  }
+
+  function formatDate(dateString) {
+    if (!dateString) return "-";
+    const date = new Date(dateString);
+    return date.toLocaleDateString("ko-KR");
+  }
+</script>
+{% endblock %}

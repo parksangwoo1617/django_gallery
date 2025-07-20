@@ -1,0 +1,538 @@
+{% extends 'base.html' %} {% block title %}작품 등록 - Django
+Gallery{%endblock%} {% block content %}
+<div class="container mt-5">
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+      <div class="card shadow">
+        <div class="card-header bg-primary text-white text-center">
+          <h4><i class="fas fa-plus me-2"></i>작품 등록</h4>
+          <p class="mb-0">새로운 작품을 등록해보세요</p>
+        </div>
+        <div class="card-body p-4">
+          <form id="artwork-form">
+            <!-- 제목 필드 -->
+            <div class="mb-4">
+              <label for="title" class="form-label fw-bold">
+                작품 제목 <span class="text-danger">*</span>
+              </label>
+              <input
+                type="text"
+                class="form-control"
+                id="title"
+                name="title"
+                placeholder="작품 제목을 입력하세요"
+                maxlength="64"
+                required
+              />
+              <div class="form-text">
+                <i class="fas fa-info-circle me-1"></i>
+                64자 이하로 입력해주세요. (<span id="title-count">0</span>/64)
+              </div>
+              <div class="invalid-feedback" id="title-error"></div>
+            </div>
+
+            <!-- 가격 필드 -->
+            <div class="mb-4">
+              <label for="price" class="form-label fw-bold">
+                가격 <span class="text-danger">*</span>
+              </label>
+              <div class="input-group">
+                <input
+                  type="text"
+                  class="form-control"
+                  id="price"
+                  name="price"
+                  placeholder="0"
+                  pattern="[0-9,]*"
+                  required
+                />
+                <span class="input-group-text">원</span>
+              </div>
+              <div class="form-text">
+                <i class="fas fa-info-circle me-1"></i>
+                0 이상의 숫자를 입력하세요. 천 단위마다 콤마가 자동으로
+                추가됩니다.
+              </div>
+              <div class="invalid-feedback" id="price-error"></div>
+            </div>
+
+            <!-- 호수 필드 -->
+            <div class="mb-4">
+              <label for="canvas_size" class="form-label fw-bold">
+                호수 <span class="text-danger">*</span>
+              </label>
+              <input
+                type="number"
+                class="form-control"
+                id="canvas_size"
+                name="canvas_size"
+                placeholder="10"
+                min="1"
+                max="500"
+                required
+              />
+              <div class="form-text">
+                <i class="fas fa-info-circle me-1"></i>
+                1 이상 500 이하의 숫자를 입력하세요. (호수는 작품의 캔버스
+                규격을 의미합니다)
+              </div>
+              <div class="invalid-feedback" id="canvas-size-error"></div>
+            </div>
+
+            <!-- 제작년도 필드 -->
+            <div class="mb-4">
+              <label for="creation_year" class="form-label fw-bold">
+                제작년도 <span class="text-danger">*</span>
+              </label>
+              <input
+                type="number"
+                class="form-control"
+                id="creation_year"
+                name="creation_year"
+                placeholder="2024"
+                max="2024"
+                required
+              />
+              <div class="form-text">
+                <i class="fas fa-info-circle me-1"></i>
+                작품을 제작한 년도를 입력하세요. (4자리 숫자)
+              </div>
+              <div class="invalid-feedback" id="creation-year-error"></div>
+            </div>
+
+            <!-- 이미지 업로드 필드 -->
+            <div class="mb-4">
+              <label for="artwork_image" class="form-label fw-bold">
+                작품 이미지
+              </label>
+              <input
+                type="file"
+                class="form-control"
+                id="artwork_image"
+                name="artwork_image"
+                accept="image/*"
+              />
+              <div class="form-text">
+                <i class="fas fa-info-circle me-1"></i>
+                JPG, PNG 형식만 지원됩니다. 최대 파일 크기: 5MB
+              </div>
+              <div class="invalid-feedback" id="image-error"></div>
+
+              <!-- 이미지 미리보기 -->
+              <div id="image-preview" class="mt-3" style="display: none">
+                <img
+                  id="preview-img"
+                  src=""
+                  alt="미리보기"
+                  class="img-thumbnail"
+                  style="max-width: 300px; max-height: 200px"
+                />
+                <div class="mt-2">
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-outline-danger"
+                    id="remove-image"
+                  >
+                    <i class="fas fa-times me-1"></i>이미지 제거
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- 버튼들 -->
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+              <a
+                href="/artists/dashboard/"
+                class="btn btn-outline-secondary me-md-2"
+              >
+                <i class="fas fa-arrow-left me-1"></i>대시보드로 돌아가기
+              </a>
+              <button type="submit" class="btn btn-primary" id="submit-btn">
+                <i class="fas fa-plus me-1"></i>작품 등록
+              </button>
+            </div>
+          </form>
+
+          <!-- 도움말 섹션 -->
+          <div class="mt-4 p-3 bg-light rounded">
+            <h6 class="mb-2">
+              <i class="fas fa-lightbulb text-warning me-1"></i>등록 안내
+            </h6>
+            <ul class="mb-0 small">
+              <li>모든 필드를 올바르게 입력해야 작품이 등록됩니다.</li>
+              <li>작품 등록은 관리자의 승인 없이 바로 완료됩니다.</li>
+              <li>등록된 작품은 대시보드에서 확인할 수 있습니다.</li>
+              <li>등록된 작품은 전시 등록 시 선택할 수 있습니다.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} {% block extra_js %}
+<script>
+  // 인증 초기화 완료 이벤트 리스너로 변경
+  document.addEventListener("authInitialized", function (event) {
+    // 로그인 및 작가 권한 체크
+    if (
+      !event.detail.currentUser ||
+      event.detail.currentUser.role !== "artist"
+    ) {
+      showMessage("작가 권한이 필요합니다.", "error");
+      setTimeout(() => {
+        window.location.href = "/accounts/login/";
+      }, 2000);
+      return;
+    }
+
+    initializeArtworkForm();
+  });
+
+  function initializeArtworkForm() {
+    const form = document.getElementById("artwork-form");
+    const titleInput = document.getElementById("title");
+    const priceInput = document.getElementById("price");
+    const canvasSizeInput = document.getElementById("canvas_size");
+    const creationYearInput = document.getElementById("creation_year");
+    const imageInput = document.getElementById("artwork_image");
+    const submitBtn = document.getElementById("submit-btn");
+
+    // 제목 글자수 카운터
+    titleInput.addEventListener("input", function () {
+      const count = this.value.length;
+      document.getElementById("title-count").textContent = count;
+
+      if (count > 64) {
+        this.classList.add("is-invalid");
+        document.getElementById("title-error").textContent =
+          "제목은 64자 이하로 입력해주세요.";
+      } else {
+        this.classList.remove("is-invalid");
+      }
+    });
+
+    // 가격 입력 시 자동 콤마 추가
+    priceInput.addEventListener("input", function () {
+      let value = this.value.replace(/[^0-9]/g, "");
+
+      if (value === "") {
+        this.value = "";
+        return;
+      }
+
+      // 숫자를 천 단위로 콤마 추가
+      this.value = parseInt(value).toLocaleString("ko-KR");
+
+      // 유효성 검증
+      const numericValue = parseInt(value);
+      if (numericValue < 0) {
+        this.classList.add("is-invalid");
+        document.getElementById("price-error").textContent =
+          "가격은 0 이상이어야 합니다.";
+      } else {
+        this.classList.remove("is-invalid");
+      }
+    });
+
+    // 호수 유효성 검증
+    canvasSizeInput.addEventListener("input", function () {
+      const value = parseInt(this.value);
+
+      if (isNaN(value) || value < 1 || value > 500) {
+        this.classList.add("is-invalid");
+        document.getElementById("canvas-size-error").textContent =
+          "호수는 1 이상 500 이하의 숫자를 입력해주세요.";
+      } else {
+        this.classList.remove("is-invalid");
+      }
+    });
+
+    // 제작년도 유효성 검증
+    creationYearInput.addEventListener("input", function () {
+      const value = parseInt(this.value);
+      const currentYear = new Date().getFullYear();
+
+      if (isNaN(value) || value > currentYear) {
+        this.classList.add("is-invalid");
+        document.getElementById(
+          "creation-year-error"
+        ).textContent = `제작년도는 ${currentYear}년 이하여야 합니다.`;
+      } else {
+        this.classList.remove("is-invalid");
+      }
+    });
+
+    // 현재 년도를 기본값으로 설정
+    creationYearInput.value = new Date().getFullYear();
+
+    // 이미지 업로드 처리
+    imageInput.addEventListener("change", function (e) {
+      const file = e.target.files[0];
+      if (file) {
+        // 파일 크기 검증 (5MB)
+        if (file.size > 5 * 1024 * 1024) {
+          this.classList.add("is-invalid");
+          document.getElementById("image-error").textContent =
+            "파일 크기는 5MB 이하여야 합니다.";
+          this.value = "";
+          return;
+        }
+
+        // 파일 형식 검증
+        if (!file.type.startsWith("image/")) {
+          this.classList.add("is-invalid");
+          document.getElementById("image-error").textContent =
+            "이미지 파일만 업로드 가능합니다.";
+          this.value = "";
+          return;
+        }
+
+        this.classList.remove("is-invalid");
+
+        // 이미지 미리보기
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          document.getElementById("preview-img").src = e.target.result;
+          document.getElementById("image-preview").style.display = "block";
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    // 이미지 제거 버튼
+    document
+      .getElementById("remove-image")
+      .addEventListener("click", function () {
+        imageInput.value = "";
+        document.getElementById("image-preview").style.display = "none";
+        imageInput.classList.remove("is-invalid");
+      });
+
+    // 폼 제출 처리
+    form.addEventListener("submit", async function (e) {
+      e.preventDefault();
+
+      if (!validateForm()) {
+        return;
+      }
+
+      await submitArtwork();
+    });
+  }
+
+  function validateForm() {
+    const title = document.getElementById("title").value.trim();
+    const priceText = document
+      .getElementById("price")
+      .value.replace(/[^0-9]/g, "");
+    const canvasSize = document.getElementById("canvas_size").value;
+    const creationYear = document.getElementById("creation_year").value;
+
+    let isValid = true;
+
+    // 제목 검증
+    if (!title) {
+      showFieldError("title", "제목을 입력해주세요.");
+      isValid = false;
+    } else if (title.length > 64) {
+      showFieldError("title", "제목은 64자 이하로 입력해주세요.");
+      isValid = false;
+    } else {
+      clearFieldError("title");
+    }
+
+    // 가격 검증
+    if (!priceText) {
+      showFieldError("price", "가격을 입력해주세요.");
+      isValid = false;
+    } else {
+      const price = parseInt(priceText);
+      if (isNaN(price) || price < 0) {
+        showFieldError("price", "올바른 가격을 입력해주세요. (0 이상의 숫자)");
+        isValid = false;
+      } else {
+        clearFieldError("price");
+      }
+    }
+
+    // 호수 검증
+    if (!canvasSize) {
+      showFieldError("canvas_size", "호수를 입력해주세요.");
+      isValid = false;
+    } else {
+      const size = parseInt(canvasSize);
+      if (isNaN(size) || size < 1 || size > 500) {
+        showFieldError(
+          "canvas_size",
+          "호수는 1 이상 500 이하의 숫자를 입력해주세요."
+        );
+        isValid = false;
+      } else {
+        clearFieldError("canvas_size");
+      }
+    }
+
+    // 제작년도 검증
+    if (!creationYear) {
+      showFieldError("creation_year", "제작년도를 입력해주세요.");
+      isValid = false;
+    } else {
+      const year = parseInt(creationYear);
+      const currentYear = new Date().getFullYear();
+      if (isNaN(year) || year > currentYear) {
+        showFieldError(
+          "creation_year",
+          `제작년도는 ${currentYear}년 이하여야 합니다.`
+        );
+        isValid = false;
+      } else {
+        clearFieldError("creation_year");
+      }
+    }
+
+    return isValid;
+  }
+
+  function showFieldError(fieldName, message) {
+    const field = document.getElementById(fieldName);
+    let errorElement;
+
+    if (fieldName === "canvas_size") {
+      errorElement = document.getElementById("canvas-size-error");
+    } else if (fieldName === "creation_year") {
+      errorElement = document.getElementById("creation-year-error");
+    } else {
+      errorElement = document.getElementById(fieldName + "-error");
+    }
+
+    field.classList.add("is-invalid");
+    errorElement.textContent = message;
+  }
+
+  function clearFieldError(fieldName) {
+    const field = document.getElementById(fieldName);
+    field.classList.remove("is-invalid");
+  }
+
+  async function submitArtwork() {
+    const submitBtn = document.getElementById("submit-btn");
+    const originalText = submitBtn.innerHTML;
+
+    // 버튼 비활성화 및 로딩 표시
+    submitBtn.disabled = true;
+    submitBtn.innerHTML =
+      '<i class="fas fa-spinner fa-spin me-1"></i>등록 중...';
+
+    try {
+      // FormData 생성 (파일 업로드를 위해)
+      const formData = new FormData();
+      formData.append("title", document.getElementById("title").value.trim());
+      formData.append(
+        "price",
+        document.getElementById("price").value.replace(/[^0-9]/g, "")
+      );
+      formData.append(
+        "canvas_size",
+        document.getElementById("canvas_size").value
+      );
+      formData.append(
+        "creation_year",
+        document.getElementById("creation_year").value
+      );
+
+      // 이미지 파일 추가 (선택적)
+      const imageFile = document.getElementById("artwork_image").files[0];
+      if (imageFile) {
+        formData.append("image", imageFile);
+      }
+
+      const response = await fetch("/api/v1/artists/me/artworks/", {
+        method: "POST",
+        headers: {
+          "X-CSRFToken": getCSRFToken(),
+        },
+        credentials: "same-origin",
+        body: formData,
+      });
+
+      if (response.ok) {
+        try {
+          const result = await response.json();
+
+          showMessage(
+            result.message || "작품이 성공적으로 등록되었습니다.",
+            "success"
+          );
+
+          // 3초 후 대시보드로 이동
+          setTimeout(() => {
+            window.location.href = "/artists/dashboard/";
+          }, 2000);
+        } catch (jsonError) {
+          console.error("응답 JSON 파싱 오류:", jsonError);
+          showMessage(
+            "작품이 등록되었지만 응답 처리 중 오류가 발생했습니다.",
+            "warning"
+          );
+        }
+      } else {
+        try {
+          // Content-Type이 JSON인지 확인
+          const contentType = response.headers.get("content-type");
+          if (contentType && contentType.includes("application/json")) {
+            const errorData = await response.json();
+            console.error("작품 등록 실패:", errorData);
+
+            if (errorData.error) {
+              showMessage(errorData.error, "error");
+            } else {
+              handleFormErrors(errorData);
+            }
+          } else {
+            // HTML 응답인 경우 (에러 페이지 등)
+            const errorText = await response.text();
+            console.error(
+              "서버 오류 (HTML 응답):",
+              response.status,
+              response.statusText
+            );
+
+            if (response.status === 401) {
+              showMessage("로그인이 필요합니다. 다시 로그인해주세요.", "error");
+            } else if (response.status === 403) {
+              showMessage("작가 권한이 필요합니다.", "error");
+            } else {
+              showMessage(
+                `서버 오류가 발생했습니다. (${response.status})`,
+                "error"
+              );
+            }
+          }
+        } catch (parseError) {
+          console.error("응답 파싱 오류:", parseError);
+          showMessage("서버 응답을 처리할 수 없습니다.", "error");
+        }
+      }
+    } catch (error) {
+      console.error("작품 등록 중 에러:", error);
+      showMessage(
+        "작품 등록 중 오류가 발생했습니다. 다시 시도해주세요.",
+        "error"
+      );
+    } finally {
+      // 버튼 복원
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalText;
+    }
+  }
+
+  function handleFormErrors(errors) {
+    for (const [field, messages] of Object.entries(errors)) {
+      if (Array.isArray(messages) && messages.length > 0) {
+        showFieldError(field, messages[0]);
+      }
+    }
+  }
+</script>
+{% endblock %}

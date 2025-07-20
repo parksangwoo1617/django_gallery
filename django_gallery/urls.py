@@ -17,12 +17,30 @@ Including another URLconf
 
 from django.contrib import admin
 from django.urls import path, include
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path("accounts/", include("accounts.urls")),
-    path("authors/", include("authors.urls")),
-    path("artworks/", include("artworks.urls")),
-    path("exhibitions/", include("exhibitions.urls")),
-    path("management/", include("management.urls")),
+    
+    # 웹 페이지 URL
+    path('', include('core.urls')),
+    path('accounts/', include('accounts.urls')),
+    path('artists/', include('artists.urls')),
+    path('artworks/', include('artworks.urls')),
+    path('management/', include('management.urls')),
+    path('exhibitions/', include('exhibitions.urls')),
+    
+    # API URL
+    path('api/v1/', include('accounts.api_urls')),
+    path('api/v1/artists/', include('artists.api_urls')),
+    path('api/v1/artworks/', include('artworks.api_urls')),
+    path('api/v1/exhibitions/', include('exhibitions.api_urls')),
+    
+    path('api-auth/', include('rest_framework.urls')),
 ]
+
+# 개발 환경에서 미디어 파일 서빙
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+ 

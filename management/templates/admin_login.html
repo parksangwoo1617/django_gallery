@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>관리자 로그인 - Django Gallery</title>
+
+    <!-- Bootstrap CSS -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <!-- Font Awesome -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+
+    <style>
+      body {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+      }
+
+      .login-container {
+        max-width: 400px;
+        margin: 0 auto;
+      }
+
+      .login-card {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 15px;
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+      }
+
+      .admin-icon {
+        width: 80px;
+        height: 80px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto -10px;
+        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+      }
+
+      .form-control:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+      }
+
+      .btn-admin {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        padding: 12px 30px;
+        font-weight: 600;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+      }
+
+      .btn-admin:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+      }
+
+      .back-to-site {
+        color: #667eea;
+        text-decoration: none;
+        font-weight: 500;
+      }
+
+      .back-to-site:hover {
+        color: #5a67d8;
+        text-decoration: underline;
+      }
+
+      .alert {
+        border-radius: 8px;
+        border: none;
+      }
+
+      .logo-text {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        font-weight: 700;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="login-container">
+        <div class="card login-card">
+          <div class="card-body p-5">
+            <!-- 관리자 아이콘 -->
+            <div class="admin-icon mb-4">
+              <i class="fas fa-user-shield fa-2x text-white"></i>
+            </div>
+
+            <!-- 헤더 -->
+            <div class="text-center mb-4">
+              <h3 class="logo-text mb-1">Django Gallery</h3>
+              <h4 class="text-dark mb-1">관리자 로그인</h4>
+              <p class="text-muted small">
+                관리자 권한으로 시스템에 접속합니다
+              </p>
+            </div>
+
+            <!-- 메시지 -->
+            {% if messages %} {% for message in messages %}
+            <div
+              class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show"
+              role="alert"
+            >
+              <i
+                class="fas fa-{% if message.tags == 'error' %}exclamation-triangle{% elif message.tags == 'success' %}check-circle{% else %}info-circle{% endif %} me-2"
+              ></i>
+              {{ message }}
+              <button
+                type="button"
+                class="btn-close"
+                data-bs-dismiss="alert"
+              ></button>
+            </div>
+            {% endfor %} {% endif %}
+
+            <!-- 로그인 폼 -->
+            <form method="post" id="adminLoginForm">
+              {% csrf_token %}
+
+              <div class="mb-3">
+                <label for="username" class="form-label">
+                  <i class="fas fa-user me-2"></i>관리자 아이디
+                </label>
+                <input
+                  type="text"
+                  class="form-control"
+                  id="username"
+                  name="username"
+                  required
+                  placeholder="관리자 아이디를 입력하세요"
+                  autocomplete="username"
+                />
+              </div>
+
+              <div class="mb-4">
+                <label for="password" class="form-label">
+                  <i class="fas fa-lock me-2"></i>비밀번호
+                </label>
+                <div class="input-group">
+                  <input
+                    type="password"
+                    class="form-control"
+                    id="password"
+                    name="password"
+                    required
+                    placeholder="비밀번호를 입력하세요"
+                    autocomplete="current-password"
+                  />
+                  <button
+                    type="button"
+                    class="btn btn-outline-secondary"
+                    id="togglePassword"
+                  >
+                    <i class="fas fa-eye"></i>
+                  </button>
+                </div>
+              </div>
+
+              <div class="d-grid mb-3">
+                <button type="submit" class="btn btn-admin text-white">
+                  <i class="fas fa-sign-in-alt me-2"></i>관리자 로그인
+                </button>
+              </div>
+
+              <div class="text-center">
+                <a href="/" class="back-to-site">
+                  <i class="fas fa-arrow-left me-2"></i>메인 사이트로 돌아가기
+                </a>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- 보안 안내 -->
+        <div class="text-center mt-4">
+          <div class="alert alert-info bg-transparent border-0 text-white">
+            <i class="fas fa-shield-alt me-2"></i>
+            <small
+              >이 페이지는 관리자 전용입니다. 무단 접근을 금지합니다.</small
+            >
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+      // 비밀번호 보기/숨기기 토글
+      document
+        .getElementById("togglePassword")
+        .addEventListener("click", function () {
+          const passwordField = document.getElementById("password");
+          const toggleIcon = this.querySelector("i");
+
+          if (passwordField.type === "password") {
+            passwordField.type = "text";
+            toggleIcon.classList.remove("fa-eye");
+            toggleIcon.classList.add("fa-eye-slash");
+          } else {
+            passwordField.type = "password";
+            toggleIcon.classList.remove("fa-eye-slash");
+            toggleIcon.classList.add("fa-eye");
+          }
+        });
+
+      // 폼 제출 시 로딩 상태
+      document
+        .getElementById("adminLoginForm")
+        .addEventListener("submit", function () {
+          const submitButton = this.querySelector('button[type="submit"]');
+          const originalText = submitButton.innerHTML;
+
+          submitButton.disabled = true;
+          submitButton.innerHTML =
+            '<i class="fas fa-spinner fa-spin me-2"></i>로그인 중...';
+
+          // 3초 후 원래 상태로 복원 (실패 케이스 대비)
+          setTimeout(() => {
+            submitButton.disabled = false;
+            submitButton.innerHTML = originalText;
+          }, 3000);
+        });
+
+      // 페이지 로드 시 아이디 입력란에 포커스
+      document.addEventListener("DOMContentLoaded", function () {
+        document.getElementById("username").focus();
+      });
+
+      // 엔터키 처리
+      document.addEventListener("keypress", function (e) {
+        if (e.key === "Enter") {
+          const activeElement = document.activeElement;
+          if (activeElement && activeElement.tagName === "INPUT") {
+            const form = activeElement.form;
+            if (form) {
+              const inputs = form.querySelectorAll("input[required]");
+              const currentIndex = Array.from(inputs).indexOf(activeElement);
+
+              if (currentIndex < inputs.length - 1) {
+                inputs[currentIndex + 1].focus();
+              } else {
+                form.submit();
+              }
+            }
+          }
+        }
+      });
+    </script>
+  </body>
+</html>

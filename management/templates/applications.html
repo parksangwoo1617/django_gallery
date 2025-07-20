@@ -1,0 +1,573 @@
+{% extends 'base.html' %} {% block title %}작가 신청 관리 - Django
+Gallery{%endblock %} {% block content %}
+<div class="container-fluid mt-4">
+  <!-- 관리자 권한 체크 -->
+  <div id="access-denied" class="d-none">
+    <div class="alert alert-danger text-center" role="alert">
+      <i class="fas fa-exclamation-triangle fa-3x mb-3"></i>
+      <h4>접근 권한이 없습니다</h4>
+      <p>관리자만 접근할 수 있는 페이지입니다.</p>
+      <a href="/" class="btn btn-primary">홈으로 돌아가기</a>
+    </div>
+  </div>
+
+  <!-- 메인 내용 -->
+  <div id="main-content" class="d-none">
+    <div class="row">
+      <!-- 사이드바 -->
+      <div class="col-md-2">
+        <div class="card">
+          <div class="card-header bg-dark text-white">
+            <h6 class="mb-0"><i class="fas fa-cog me-2"></i>관리자 메뉴</h6>
+          </div>
+          <div class="card-body p-0">
+            <nav class="nav flex-column">
+              <a class="nav-link" href="/management/">
+                <i class="fas fa-tachometer-alt me-2"></i>대시보드
+              </a>
+              <a class="nav-link active" href="/management/applications/">
+                <i class="fas fa-user-plus me-2"></i>작가 신청 관리
+              </a>
+              <a class="nav-link" href="/management/statistics/">
+                <i class="fas fa-chart-bar me-2"></i>작가 통계
+              </a>
+
+              <div class="dropdown-divider"></div>
+              <a
+                class="nav-link text-danger"
+                href="{% url 'management:admin_logout' %}"
+              >
+                <i class="fas fa-sign-out-alt me-2"></i>로그아웃
+              </a>
+            </nav>
+          </div>
+        </div>
+      </div>
+
+      <!-- 메인 콘텐츠 -->
+      <div class="col-md-10">
+        <!-- 헤더 -->
+        <div class="row mb-4">
+          <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+              <h1>
+                <i class="fas fa-user-plus text-primary me-2"></i>작가 신청 관리
+              </h1>
+              <div>
+                <span class="badge bg-warning text-dark fs-6 me-2">
+                  대기: <span id="pending-count">0</span>건
+                </span>
+                <span class="badge bg-success fs-6">
+                  총 <span id="total-count">0</span>건
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 작가 등록 신청 내역 -->
+        <div class="row">
+          <div class="col-12">
+            <div class="card">
+              <div
+                class="card-header d-flex justify-content-between align-items-center"
+              >
+                <h5 class="mb-0">
+                  <i class="fas fa-list text-info me-2"></i>신청 내역
+                </h5>
+                <div>
+                  <button
+                    class="btn btn-success btn-sm ms-2"
+                    id="bulk-approve-btn"
+                    disabled
+                  >
+                    <i class="fas fa-check me-1"></i>선택 승인
+                  </button>
+                  <button
+                    class="btn btn-danger btn-sm ms-1"
+                    id="bulk-reject-btn"
+                    disabled
+                  >
+                    <i class="fas fa-times me-1"></i>선택 반려
+                  </button>
+                  <button
+                    class="btn btn-info btn-sm ms-1"
+                    onclick="exportApplicationsCSV()"
+                  >
+                    <i class="fas fa-download me-1"></i>CSV 다운로드
+                  </button>
+                </div>
+              </div>
+              <div class="card-body">
+                <div class="table-responsive">
+                  <table class="table table-striped table-hover">
+                    <thead class="table-dark">
+                      <tr>
+                        <th>
+                          <input
+                            type="checkbox"
+                            id="select-all-applications"
+                            class="form-check-input"
+                          />
+                        </th>
+                        <th>신청일</th>
+                        <th>작가명</th>
+                        <th>성별</th>
+                        <th>생년월일</th>
+                        <th>이메일</th>
+                        <th>연락처</th>
+                        <th>상태</th>
+                      </tr>
+                    </thead>
+                    <tbody id="applications-table">
+                      <!-- 동적으로 로드 -->
+                    </tbody>
+                  </table>
+                </div>
+
+                <!-- 페이지네이션 -->
+                <div
+                  class="d-flex justify-content-between align-items-center mt-3"
+                >
+                  <div>
+                    <small class="text-muted">
+                      총 <span id="pagination-total">0</span>개 중
+                      <span id="pagination-start">0</span>-<span
+                        id="pagination-end"
+                        >0</span
+                      >
+                      표시
+                    </small>
+                  </div>
+                  <nav>
+                    <ul class="pagination pagination-sm mb-0" id="pagination">
+                      <!-- 동적으로 생성 -->
+                    </ul>
+                  </nav>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 로딩 -->
+  <div id="loading" class="loading text-center">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">로딩 중...</span>
+    </div>
+    <p class="mt-2">신청 내역을 불러오는 중...</p>
+  </div>
+</div>
+
+<style>
+  .nav-link {
+    color: #6c757d;
+    border-radius: 0;
+  }
+
+  .nav-link:hover {
+    background-color: #f8f9fa;
+    color: #495057;
+  }
+
+  .nav-link.active {
+    background-color: #007bff;
+    color: white;
+  }
+
+  .table th {
+    border-top: none;
+  }
+
+  .loading {
+    padding: 3rem 0;
+  }
+
+  .badge-sm {
+    font-size: 0.75em;
+  }
+</style>
+
+{% endblock %} {% block extra_js %}
+<script>
+
+  let currentPage = 1;
+  let pageSize = 20;
+
+  document.addEventListener("DOMContentLoaded", function () {
+    // 관리자 세션 정보
+    const isAdminLoggedIn = {{ request.session.is_admin_logged_in|yesno:"true,false" }};
+    const adminUserId = "{{ request.session.admin_user_id }}";
+    const adminUsername = "{{ request.session.admin_username }}";
+
+
+
+    // 관리자 권한 체크
+    if (!isAdminLoggedIn) {
+      document.getElementById("access-denied").classList.remove("d-none");
+      document.getElementById("loading").classList.add("d-none");
+      return;
+    }
+
+    loadApplications();
+  });
+
+  async function loadApplications(page = 1) {
+    const loading = document.getElementById("loading");
+    const content = document.getElementById("main-content");
+
+    loading.classList.remove("d-none");
+    content.classList.add("d-none");
+
+    try {
+      const response = await fetch(
+        `/management/api/applications/?page=${page}&page_size=${pageSize}`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+      if (response.ok) {
+        const data = await response.json();
+
+        // 카운트 업데이트
+        updateCounts(data);
+
+        // 테이블 업데이트
+        displayApplications(data.results || []);
+
+        // 페이지네이션 업데이트
+        updatePagination(data);
+
+        content.classList.remove("d-none");
+      } else {
+        throw new Error("데이터 로딩 실패");
+      }
+    } catch (error) {
+      console.error("Applications load error:", error);
+      showMessage("신청 내역 로딩 중 오류가 발생했습니다.", "error");
+    } finally {
+      loading.classList.add("d-none");
+    }
+  }
+
+  function updateCounts(data) {
+    const pendingCount =
+      data.results?.filter((app) => app.status === "pending").length || 0;
+    const totalCount = data.count || 0;
+
+    document.getElementById("pending-count").textContent = pendingCount;
+    document.getElementById("total-count").textContent = totalCount;
+  }
+
+  function displayApplications(applications) {
+    const tbody = document.getElementById("applications-table");
+
+    if (applications.length === 0) {
+      tbody.innerHTML =
+        '<tr><td colspan="8" class="text-center text-muted py-4">신청 내역이 없습니다.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = applications
+      .map(
+        (app) => `
+      <tr>
+        <td>
+          ${
+            app.status === "pending"
+              ? `<input type="checkbox" class="form-check-input application-checkbox"
+                    value="${app.id}" onchange="updateBulkButtons()">`
+              : ""
+          }
+        </td>
+        <td><small>${formatDate(app.applied_at)}</small></td>
+        <td><strong>${app.artist_name}</strong></td>
+        <td>${app.gender === "male" ? "남자" : "여자"}</td>
+        <td><small>${formatDate(app.birth_date)}</small></td>
+        <td><small class="text-muted">${
+          app.email || app.contact_email || "-"
+        }</small></td>
+        <td><small>${app.phone || "-"}</small></td>
+        <td><span class="badge ${getStatusBadgeClass(app.status)} badge-sm">${
+          app.status_display
+        }</span></td>
+      </tr>
+    `
+      )
+      .join("");
+
+    setupBulkSelectionHandlers();
+  }
+
+  function updatePagination(data) {
+    const pagination = document.getElementById("pagination");
+    const totalPages = Math.ceil(data.count / pageSize);
+
+    // 페이지네이션 정보 업데이트
+    const start = (currentPage - 1) * pageSize + 1;
+    const end = Math.min(currentPage * pageSize, data.count);
+
+    document.getElementById("pagination-total").textContent = data.count;
+    document.getElementById("pagination-start").textContent = start;
+    document.getElementById("pagination-end").textContent = end;
+
+    // 페이지네이션 버튼 생성
+    if (totalPages <= 1) {
+      pagination.innerHTML = "";
+      return;
+    }
+
+    let paginationHTML = "";
+
+    // 이전 페이지
+    if (currentPage > 1) {
+      paginationHTML += `<li class="page-item">
+        <a class="page-link" href="#" onclick="changePage(${
+          currentPage - 1
+        })">이전</a>
+      </li>`;
+    }
+
+    // 페이지 번호들
+    for (
+      let i = Math.max(1, currentPage - 2);
+      i <= Math.min(totalPages, currentPage + 2);
+      i++
+    ) {
+      paginationHTML += `<li class="page-item ${
+        i === currentPage ? "active" : ""
+      }">
+        <a class="page-link" href="#" onclick="changePage(${i})">${i}</a>
+      </li>`;
+    }
+
+    // 다음 페이지
+    if (currentPage < totalPages) {
+      paginationHTML += `<li class="page-item">
+        <a class="page-link" href="#" onclick="changePage(${
+          currentPage + 1
+        })">다음</a>
+      </li>`;
+    }
+
+    pagination.innerHTML = paginationHTML;
+  }
+
+  function changePage(page) {
+    currentPage = page;
+    loadApplications(page);
+  }
+
+  // 체크박스 관련 기능 (기존과 동일)
+  function setupBulkSelectionHandlers() {
+    const selectAllCheckbox = document.getElementById(
+      "select-all-applications"
+    );
+    const bulkApproveBtn = document.getElementById("bulk-approve-btn");
+    const bulkRejectBtn = document.getElementById("bulk-reject-btn");
+
+    if (selectAllCheckbox) {
+      selectAllCheckbox.addEventListener("change", function () {
+        const checkboxes = document.querySelectorAll(".application-checkbox");
+        checkboxes.forEach((checkbox) => {
+          checkbox.checked = selectAllCheckbox.checked;
+        });
+        updateBulkButtons();
+      });
+    }
+
+    if (bulkApproveBtn) {
+      bulkApproveBtn.addEventListener("click", function () {
+        const selectedIds = getSelectedApplicationIds();
+        if (selectedIds.length === 0) return;
+
+        if (
+          confirm(`선택된 ${selectedIds.length}개의 신청을 승인하시겠습니까?`)
+        ) {
+          bulkProcessApplications("approved", selectedIds);
+        }
+      });
+    }
+
+    if (bulkRejectBtn) {
+      bulkRejectBtn.addEventListener("click", function () {
+        const selectedIds = getSelectedApplicationIds();
+        if (selectedIds.length === 0) return;
+
+        if (
+          confirm(`선택된 ${selectedIds.length}개의 신청을 반려하시겠습니까?`)
+        ) {
+          bulkProcessApplications("rejected", selectedIds);
+        }
+      });
+    }
+
+
+  }
+
+  // 나머지 함수들 (기존과 동일하지만 API 호출 함수들 추가)
+  function updateBulkButtons() {
+    const selectedIds = getSelectedApplicationIds();
+    const bulkApproveBtn = document.getElementById("bulk-approve-btn");
+    const bulkRejectBtn = document.getElementById("bulk-reject-btn");
+
+    const hasSelection = selectedIds.length > 0;
+    if (bulkApproveBtn) bulkApproveBtn.disabled = !hasSelection;
+    if (bulkRejectBtn) bulkRejectBtn.disabled = !hasSelection;
+  }
+
+  function getSelectedApplicationIds() {
+    const checkboxes = document.querySelectorAll(
+      ".application-checkbox:checked"
+    );
+    return Array.from(checkboxes).map((cb) => parseInt(cb.value));
+  }
+
+
+
+
+
+
+
+  async function processApplication(id, status) {
+    try {
+      const response = await fetch(`/management/api/applications/${id}/review/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          status: status,
+          rejection_reason: "",
+        }),
+      });
+
+      if (response.ok) {
+        showMessage(
+          `신청이 ${status === "approved" ? "승인" : "반려"}되었습니다.`,
+          "success"
+        );
+        loadApplications(currentPage);
+      } else {
+        const error = await response.json();
+        showMessage(error.error || "처리 중 오류가 발생했습니다.", "error");
+      }
+    } catch (error) {
+      console.error("Application process error:", error);
+      showMessage("네트워크 오류가 발생했습니다.", "error");
+    }
+  }
+
+  // 유틸리티 함수들
+  function getStatusBadgeClass(status) {
+    switch (status) {
+      case "pending":
+        return "bg-warning text-dark";
+      case "approved":
+        return "bg-success";
+      case "rejected":
+        return "bg-danger";
+      default:
+        return "bg-secondary";
+    }
+  }
+
+  function formatDate(dateString) {
+    if (!dateString) return "-";
+    const date = new Date(dateString);
+    return date.toLocaleDateString("ko-KR");
+  }
+
+
+
+
+
+  async function exportApplicationsCSV() {
+    try {
+      showMessage("CSV 파일을 생성하는 중...", "info");
+
+      const response = await api.request(
+        "/management/api/export/applications/",
+        {
+          method: "GET",
+        }
+      );
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `artist_applications_${
+          new Date().toISOString().split("T")[0]
+        }.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+
+        showMessage("CSV 파일이 다운로드되었습니다.", "success");
+      } else {
+        throw new Error("CSV 다운로드 실패");
+      }
+    } catch (error) {
+      console.error("CSV export error:", error);
+      showMessage("CSV 다운로드 중 오류가 발생했습니다.", "error");
+    }
+  }
+
+  async function bulkProcessApplications(status, ids) {
+    try {
+      showMessage(`처리 중... (${ids.length}개 신청)`, "info");
+
+      const promises = ids.map(async (id) => {
+        const response = await api.reviewArtistApplication(id, status, "");
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || '처리 실패');
+        }
+        return response.json();
+      });
+
+      const results = await Promise.allSettled(promises);
+      const successful = results.filter((r) => r.status === "fulfilled").length;
+      const failed = results.filter((r) => r.status === "rejected").length;
+
+      if (successful > 0) {
+        showMessage(
+          `${successful}개 신청이 ${
+            status === "approved" ? "승인" : "반려"
+          }되었습니다.` + (failed > 0 ? ` (${failed}개 실패)` : ""),
+          "success"
+        );
+
+        // 체크박스 선택 해제
+        const selectAllCheckbox = document.getElementById("select-all-applications");
+        if (selectAllCheckbox) {
+          selectAllCheckbox.checked = false;
+        }
+        const checkboxes = document.querySelectorAll(".application-checkbox");
+        checkboxes.forEach((checkbox) => {
+          checkbox.checked = false;
+        });
+        updateBulkButtons();
+
+        // 목록 새로고침
+        await loadApplications(currentPage);
+      } else {
+        showMessage("처리 중 오류가 발생했습니다.", "error");
+        console.error("Failed results:", results.filter((r) => r.status === "rejected"));
+      }
+    } catch (error) {
+      console.error("Bulk process error:", error);
+      showMessage("일괄 처리 중 오류가 발생했습니다.", "error");
+    }
+  }
+</script>
+{% endblock %}
