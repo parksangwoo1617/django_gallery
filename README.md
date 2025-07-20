@@ -1,7 +1,5 @@
 # Django Gallery
 
-Django 기반 온라인 갤러리 플랫폼입니다. 작가들이 작품을 등록하고 전시회를 개최할 수 있으며, 관리자가 작가 신청을 심사하고 플랫폼을 관리할 수 있습니다.
-
 **🌐 라이브 사이트**: [http://django-gallery.kro.kr/](http://django-gallery.kro.kr/)
 
 ## 🎯 주요 기능
