@@ -13,7 +13,7 @@ SECRET_KEY = "django-insecure-qg^dblcfxur7!0_^rkdqpx$olz+!g4&baci346qzldv0d%sf=@
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'django-gallery.kro.kr']
 
 
 # Application definition
