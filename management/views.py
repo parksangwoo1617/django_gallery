@@ -146,7 +146,7 @@ def dashboard_stats(request):
 
         # 작가 상세 통계 (실제 데이터 기반)
         artist_stats = []
-        artists = Artist.objects.all()
+        artists = Artist.objects.prefetch_related('artworks')
         for artist in artists:
             # 100호 이하 작품 개수
             artwork_count_under_100 = artist.artworks.filter(canvas_size__lte=100).count()
